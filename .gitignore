@@ -1,0 +1,22 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.key
+*.pem
+service-account.json
+google-credentials.json
+.env
+
+# Temporary files
+*.tmp
+*.bak
+*~
