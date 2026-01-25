@@ -1,7 +1,36 @@
 # WODVISION - Quick Reference Guide
 
-**Versione**: 1.0.13 | **Data**: 24 Gennaio 2026
+**Versione**: 1.0.17 | **Data**: 25 Gennaio 2026
 Disclaimer: l'utente non ha mai sviluppato app mobile e non sa scrivere codice di alcun tipo, è un novellino. Le cose più importanti da tenere in considerazione sono la sicurezza dei dati e la sicurezza dell'app.
+
+> **Changelog v1.0.17**: 🚀 **Upgrade Gemini 3 Flash + AI Disclaimer** - Migliore qualità analisi video:
+> - **Modello primario**: `gemini-3-flash-preview` (best multimodal understanding)
+> - **Fallback automatico**: `gemini-2.5-flash` se primario non disponibile
+> - **Deprecazione evitata**: Gemini 2.0 Flash shutdown 31 Mar 2026
+> - **Costo stimato**: +$10/mese per 1000 analisi (pagato da ~2 abbonamenti)
+> - **Fix formattazione**: Aggiornate istruzioni markdown per Gemini 3 (headers su righe separate)
+> - **AI Disclaimer**: Aggiunto in `AnalyzedReportScreen` - "Our AI is good, but can always make mistakes..."
+> - **Cloud Run**: Revision 00038-mdp deployata
+> - **Beneficio**: Feedback AI migliori + disclaimer legale per protezione
+> - **Vedi**: `SESSION_LOG_2026-01-25_GEMINI_UPGRADE.md` per dettagli
+
+> **Changelog v1.0.16**: ✅ **FIX Video Player** - Risolto spinner infinito in AnalyzedReportScreen:
+> - **Problema**: Laravel scaricava video da GCS e serviva via HTTP locale (`http://64.226.127.138/storage/...`)
+> - **Causa**: Android bloccava HTTP (cleartext traffic disabled in `network_security_config.xml`)
+> - **Fix**: Rimosso download locale in `MergeChunksJob.php`, usa URL GCS direttamente
+> - **Risultato**: `video_url` ora punta a `https://storage.googleapis.com/...` (HTTPS + whitelist)
+> - **Bonus**: Risparmio storage su server Laravel (video processati solo su GCS)
+> - **Status**: Upload ✅ | Analisi AI ✅ | Video GCS ✅ | Video Player ✅ **TUTTO FUNZIONANTE**
+
+> **Changelog v1.0.15**: 🔥 **HOTFIX CRITICO Backend AI** - Video upload e analisi ripristinati dopo multiple issue:
+> - **PHP Upload Limits**: Apache php.ini aveva `upload_max_filesize=2M` invece di 50M. Fix: `/etc/php/8.3/apache2/php.ini`
+> - **Dockerfile**: Aggiunto `mkdir -p /app/output` (mancava, causava RuntimeError all'avvio)
+> - **Gemini API Key**: Chiave vecchia invalidata. Creata nuova in GCP Console → Credentials
+> - **Secret Manager**: Aggiornato secret `GEMINI_API_KEY` con nuova chiave
+> - **Generative Language API**: NON era abilitata! Comando: `gcloud services enable generativelanguage.googleapis.com`
+> - **Cloud Run**: Ridistribuito 3 volte (revision 00034 → 00035 → 00036-jrp)
+
+> **Changelog v1.0.14**: GCS Storage Cleanup implementato e testato in production. clearHistory() ora cancella video da GCS e file locali (thumbnails). Service account dedicato `wodvision-gcs-cleanup` creato. AI Validation Layer POSTICIPATO (raddoppiava tempi analisi - da ripensare con approccio sampling). Scripts server (backup, cron) creati ma non ancora installati.
 
 > **Changelog v1.0.13**: Database audit completato + riorganizzazione infrastruttura. Dati reali: 135 utenti (non 242), 3 abbonamenti attivi, 39 dirty data corretti. Migrazione RevenueCat semplificata: solo 1 cliente reale userà "Restore Purchases". Aggiunta task critica #21: cron job subscription expiry. Multi-repo organizzato: wodvision-mobile, wodvision-api, wodvision-ai, wodvision-docs.
 
@@ -20,6 +49,8 @@ Disclaimer: l'utente non ha mai sviluppato app mobile e non sa scrivere codice d
 > **📚 Documentazione Completa:**
 > - `DOCUMENTAZIONE_TECNICA_WODVISION.md` (Frontend + Laravel + DB)
 > - `DOCUMENTAZIONE_BACKEND_PYTHON_WODVISION.md` (AI Processing)
+> - `SESSION_LOG_2026-01-25_GEMINI_UPGRADE.md` (Build in public log - Gemini 3 + Disclaimer)
+> - `SESSION_LOG_2026-01-25_VIDEO_PLAYER_FIX.md` (Build in public log - Video Player Fix)
 > - `SESSION_LOG_2026-01-21_ANALYTICS.md` (Build in public log - Analytics)
 > - `SESSION_LOG_2026-01-17.md` (Build in public log - RevenueCat)
 > - `SESSION_LOG_2026-01-15.md` (Build in public log - Security)
@@ -158,10 +189,23 @@ git push origin v1.0.7
 App Flutter ──> Laravel API (DigitalOcean) ──> Python Backend (Cloud Run)
                       │                              │
                       ▼                              ▼
-                 MySQL DB                    Gemini 2.0 Flash AI
+                 MySQL DB                    Gemini 3 Flash AI
                       │                              │
                       └──────── Firebase Storage ────┘
 ```
+
+### Storage Files - Dove sono i video?
+
+| Tipo File | Location | Path |
+|-----------|----------|------|
+| **Video originali** | DigitalOcean (Laravel) | `/var/www/html/crossfit/storage/app/public/videos/` |
+| **Thumbnails** | DigitalOcean (Laravel) | `/var/www/html/crossfit/storage/app/public/videos/` |
+| **Video processati** | Google Cloud Storage | `gs://movement-analysis-videos/processed_videos/` |
+| **Upload temporanei** | Firebase Storage | (usato durante upload chunked) |
+
+**Cleanup automatico** (v1.0.14):
+- `clearHistory()` ora cancella: video locali + thumbnails + video GCS
+- Service Account GCS: `wodvision-gcs-cleanup`
 
 ---
 
@@ -224,7 +268,7 @@ lib/
 1. Riceve video da Laravel
 2. MediaPipe → Skeleton detection (33 landmark points)
 3. YOLO → Object detection (barbell, box, ball)
-4. Gemini 2.0 Flash → Analisi movimento + feedback
+4. Gemini 3 Flash → Analisi movimento + feedback (fallback: 2.5 Flash)
 5. Ritorna: video processato + JSON analysis
 ```
 
@@ -502,15 +546,28 @@ htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8');
 
 ### 🔴 PRIORITÀ ALTA - Manutenzione Critica
 
-**Sicurezza & Infrastruttura**
-- [ ] **Configure cron job for subscription expiry** ⚠️ **NUOVO - CRITICO**
+**Bug Video Player Flutter** ✅ **RISOLTO (25 Gen 2026)**
+- [x] **Fix video player spinner infinito in AnalyzedReportScreen**
+  - **Sintomo**: Dopo analisi completata, il video non si visualizza (rotellina infinita)
+  - **Causa**: Laravel scaricava video da GCS e serviva via HTTP (`http://64.226.127.138/storage/...`)
+  - **Android bloccava**: Cleartext traffic disabilitato in `network_security_config.xml`
+  - **Errore logs**: `PlatformException(VideoError, androidx.media3.exoplayer.ExoPlaybackException: Source error)`
+  - **Fix**: Rimosso `downloadAndStoreVideo()` in `MergeChunksJob.php` - usa URL GCS direttamente
+  - **Risultato**: `video_url` → `https://storage.googleapis.com/movement-analysis-videos/...`
+  - **Bonus**: Risparmio storage server (video processati solo su GCS)
+
+**Sicurezza & Infrastruttura** (Scripts pronti in `wodvision-api/scripts/`)
+- [ ] **Configure cron job for subscription expiry** ⚠️ **CRITICO**
   - Currently missing - caused 39 subscriptions with dirty data
-  - Command: `0 2 * * * cd /var/www/html/crossfit && php artisan subscriptions:expire >> /var/log/laravel-cron.log 2>&1`
-  - Runs daily at 2 AM to automatically expire subscriptions
+  - Command: `* * * * * cd /var/www/html/crossfit && php artisan schedule:run >> /var/log/laravel-schedule.log 2>&1`
+  - **Guida**: `wodvision-api/scripts/SERVER_SETUP.md`
+- [ ] **Setup automatic database backups** ⚠️ **CRITICO**
+  - **Script pronto**: `wodvision-api/scripts/backup-wodvision-db.sh`
+  - **Cron**: `0 2 * * * /usr/local/bin/backup-wodvision-db.sh`
+  - Mantiene ultimi 7 giorni di backup
+- [ ] Set APP_DEBUG=false in Laravel .env (verificare)
 - [ ] Build APK per Google Play Store release (update)
 - [ ] Verificare SSL/HTTPS su production server (64.226.127.138)
-- [ ] Set APP_DEBUG=false in Laravel .env
-- [ ] Setup automatic database backups su DigitalOcean
 - [ ] Verify rate limiting attivo su Laravel API
 - [ ] Switch Stripe da TEST a LIVE mode (se ancora usato - RevenueCat è sistema ufficiale)
 - [ ] Configure Stripe webhook per production (opzionale)
@@ -541,18 +598,28 @@ htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8');
 - ✅ Dashboard RevenueCat si popolerà automaticamente quando user fa restore
 - ⚠️ Task #3-7 originali DEPRECATE (non più necessarie)
 
-**Backend Storage Cleanup** (CRITICO - Previene Storage Leak)
+**Backend Storage Cleanup** ✅ **PARZIALMENTE COMPLETATO (24 Gen 2026)**
+- [x] Implementare cancellazione video da Google Cloud Storage quando user fa "Clear History"
+  - **Implementato in**: `JourneyRepository.php` → `clearHistory()`, `deleteGcsFiles()`
+  - **Service Account**: `wodvision-gcs-cleanup@peak-ascent-452414-k2.iam.gserviceaccount.com`
+  - **Credenziali**: `/var/www/html/crossfit/storage/app/gcs-credentials.json`
+  - **Test**: 24 file cancellati (12 video + 12 thumbnail) per user 125
+- [x] Implementare cancellazione file locali (thumbnails, video originali)
+  - **Implementato in**: `JourneyRepository.php` → `deleteLocalFiles()`
+  - **Path**: `/var/www/html/crossfit/storage/app/public/videos/`
 - [ ] Implementare cancellazione video da Firebase Storage quando user fa "Clear History"
-- [ ] Implementare cancellazione video da Google Cloud Storage quando user fa "Clear History"
-- [ ] Configurare lifecycle policy su Firebase Storage (auto-delete video dopo 90 giorni)
 - [ ] Configurare lifecycle policy su GCS (auto-delete processed video dopo 90 giorni)
+  - **Script pronto**: `wodvision-api/scripts/gcs-lifecycle.json`
+  - **Comando**: `gsutil lifecycle set gcs-lifecycle.json gs://movement-analysis-videos`
+- [ ] Configurare lifecycle policy su Firebase Storage (auto-delete video dopo 90 giorni)
 - [ ] Setup monitoring costi storage con alert (Firebase + GCS)
 
-**AI Quality & Validation** (CRITICO - Product Quality)
-- [ ] **Implementare validation layer per video inutilizzabili**
-  - Verificare skeleton detection confidence prima di Gemini
-  - Restituire errore se video troppo sfocato/buio/angolo sbagliato
-  - Prevenire score falsi su movimenti non riconoscibili
+**AI Quality & Validation** ⏸️ **POSTICIPATO**
+- [ ] **Implementare validation layer per video inutilizzabili** ⚠️ **POSTICIPATO**
+  - ❌ Primo tentativo fallito (24 Gen 2026): scan video intero PRIMA di processing
+  - ❌ Problema: raddoppiava i tempi (da ~2min a ~5min)
+  - 💡 **Approccio futuro**: sampling (analizzare solo 10-20 frame sparsi invece di tutto il video)
+  - Codice sviluppato e testato su staging (`movement-analysis-staging`) poi rollback
 - [ ] Review e ottimizzazione Gemini AI analysis
   - Testare su 20+ video diversi movimenti
   - Confrontare feedback AI vs coach umano (accuracy check)
@@ -560,7 +627,7 @@ htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8');
   - Ottimizzare prompt per feedback più actionable
   - Verificare score accuracy (form, speed, stability)
   - Testare edge cases (lighting scarso, angoli strani)
-  - Considerare Gemini 2.0 Flash-Exp (più veloce/economico)
+  - ✅ Upgrade a Gemini 3 Flash completato (v1.0.17)
 
 ---
 
@@ -725,6 +792,69 @@ mysql -u app_user -p wodvision < backup.sql
 | Loading infinito | Timeout aggiunto in v1.0.7 - se persiste check network |
 | "Connection timeout" | Normale per AI (5min) - server potrebbe essere sovraccarico |
 
+### 🔥 Troubleshooting Backend AI (Cloud Run + GCP) - Guida Dettagliata
+
+#### Errore: "The file failed to upload" (Laravel)
+**Causa**: PHP upload limits troppo bassi
+**Verifica**: `php -i | grep upload_max` (CLI) vs config Apache/FPM
+**Fix**:
+```bash
+# Su server DigitalOcean (64.226.127.138)
+sudo nano /etc/php/8.3/apache2/php.ini
+# Cerca e modifica:
+upload_max_filesize = 50M
+post_max_size = 55M
+# Riavvia:
+sudo systemctl restart apache2
+```
+
+#### Errore: "API key not valid" (Gemini)
+**Causa**: Chiave API Gemini scaduta/invalida
+**Verifica**:
+1. GCP Console → APIs & Services → Credentials
+2. Verifica che esista una API key attiva
+**Fix**:
+1. Crea nuova API key in GCP Console
+2. Aggiorna Secret Manager: `gcloud secrets versions add GEMINI_API_KEY --data-file=-`
+3. Redeploy Cloud Run: `gcloud run services update movement-analysis --region us-central1 --update-env-vars "REFRESH_TIMESTAMP=$(date +%s)"`
+
+#### Errore: "Permission denied on secret" (Cloud Run)
+**Causa**: Service account non ha accesso a Secret Manager
+**Fix**: IAM → Aggiungi ruolo "Secret Manager Secret Accessor" al service account `250284968641-compute@developer.gserviceaccount.com`
+
+#### Errore: "Directory 'output' does not exist" (Cloud Run startup)
+**Causa**: Dockerfile non crea la directory /app/output
+**Fix**: Modifica Dockerfile, aggiungi `RUN mkdir -p /tmp/uploads /tmp/output /app/output`
+**Rebuild**: `gcloud builds submit --tag gcr.io/peak-ascent-452414-k2/movement-analysis && gcloud run deploy movement-analysis --image gcr.io/peak-ascent-452414-k2/movement-analysis --region us-central1`
+
+#### Errore: 500 Internal Server Error (analisi fallisce silenziosamente)
+**Causa probabile**: Generative Language API non abilitata
+**Verifica**: `gcloud services list --enabled --filter="name:generativelanguage"`
+**Fix**: `gcloud services enable generativelanguage.googleapis.com --project peak-ascent-452414-k2`
+
+#### Come verificare i log Cloud Run
+```bash
+# Log recenti
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=movement-analysis" --project peak-ascent-452414-k2 --limit=30 --format="table(timestamp,textPayload)" --freshness=5m
+
+# Solo errori
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=movement-analysis AND severity>=ERROR" --project peak-ascent-452414-k2 --limit=10 --format="json"
+```
+
+#### Come forzare redeploy Cloud Run
+```bash
+gcloud run services update movement-analysis --region us-central1 --project peak-ascent-452414-k2 --update-env-vars "REFRESH_TIMESTAMP=$(date +%s)"
+```
+
+#### Come verificare video su GCS
+```bash
+# Lista video recenti
+gsutil ls -l "gs://movement-analysis-videos/processed_videos/" | tail -10
+
+# Verifica accessibilità pubblica
+curl -I "https://storage.googleapis.com/movement-analysis-videos/processed_videos/NOME_VIDEO.mp4"
+```
+
 ---
 
 ## 14. CONTATTI E RISORSE
@@ -755,13 +885,13 @@ mysql -u app_user -p wodvision < backup.sql
 
 ---
 
-*Ultimo aggiornamento: 24 Gennaio 2026 (v1.0.13)*
+*Ultimo aggiornamento: 24 Gennaio 2026 (v1.0.14)*
 *Per modifiche a questo file: aggiornare anche i doc completi se necessario*
 *Session logs disponibili: `SESSION_LOG_2026-01-21_ANALYTICS.md`, `SESSION_LOG_2026-01-17.md`, `SESSION_LOG_2026-01-15.md`*
 
 ---
 
-## 📂 STRUTTURA MULTI-REPO (v1.0.13)
+## 📂 STRUTTURA MULTI-REPO (v1.0.14)
 
 ```
 C:\Users\kogy9\Projects\
