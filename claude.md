@@ -12,6 +12,7 @@ Disclaimer: l'utente non ha mai sviluppato app mobile e non sa scrivere codice d
 > - **RevenueCat iOS**: Verificato funzionamento paywall su iOS
 > - **Status**: In attesa review Apple (1-2 giorni)
 > - **Nota**: dSYM warning ignorabile (non blocca pubblicazione)
+> - **Vedi**: `SESSION_LOG_2026-01-25_IOS_RELEASE.md` per dettagli
 
 > **Changelog v1.0.17**: 🚀 **Upgrade Gemini 3 Flash + AI Disclaimer** - Migliore qualità analisi video:
 > - **Modello primario**: `gemini-3-flash-preview` (best multimodal understanding)
@@ -59,6 +60,7 @@ Disclaimer: l'utente non ha mai sviluppato app mobile e non sa scrivere codice d
 > **📚 Documentazione Completa:**
 > - `DOCUMENTAZIONE_TECNICA_WODVISION.md` (Frontend + Laravel + DB)
 > - `DOCUMENTAZIONE_BACKEND_PYTHON_WODVISION.md` (AI Processing)
+> - `SESSION_LOG_2026-01-25_IOS_RELEASE.md` (Build in public log - iOS App Store Release)
 > - `SESSION_LOG_2026-01-25_GEMINI_UPGRADE.md` (Build in public log - Gemini 3 + Disclaimer)
 > - `SESSION_LOG_2026-01-25_VIDEO_PLAYER_FIX.md` (Build in public log - Video Player Fix)
 > - `SESSION_LOG_2026-01-21_ANALYTICS.md` (Build in public log - Analytics)
