@@ -1,7 +1,17 @@
 # WODVISION - Quick Reference Guide
 
-**Versione**: 1.0.17 | **Data**: 25 Gennaio 2026
+**Versione**: 1.0.18 | **Data**: 25 Gennaio 2026
 Disclaimer: l'utente non ha mai sviluppato app mobile e non sa scrivere codice di alcun tipo, è un novellino. Le cose più importanti da tenere in considerazione sono la sicurezza dei dati e la sicurezza dell'app.
+
+> **Changelog v1.0.18**: 📱 **iOS App Store Release** - Prima release iOS dopo setup Mac:
+> - **Build caricata**: v1.0.7 (build 10) su App Store Connect
+> - **Fix iOS Deployment Target**: Allineato IPHONEOS_DEPLOYMENT_TARGET a 15.6 in tutto il progetto (era misto 12.0/15.6)
+> - **Fix CocoaPods**: Risolto conflitto Firebase/Crashlytics 11.8.0 → 11.15.0
+> - **Setup Mac**: Configurato ambiente sviluppo iOS su nuovo Mac
+> - **Test su device**: Testato su iPhone 16 fisico (iOS 26.2)
+> - **RevenueCat iOS**: Verificato funzionamento paywall su iOS
+> - **Status**: In attesa review Apple (1-2 giorni)
+> - **Nota**: dSYM warning ignorabile (non blocca pubblicazione)
 
 > **Changelog v1.0.17**: 🚀 **Upgrade Gemini 3 Flash + AI Disclaimer** - Migliore qualità analisi video:
 > - **Modello primario**: `gemini-3-flash-preview` (best multimodal understanding)
