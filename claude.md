@@ -674,6 +674,19 @@ htmlspecialchars($userInput, ENT_QUOTES, 'UTF-8');
 - [ ] Implementare caching per movement_types API
 - [ ] Ottimizzare query DB più lente (profiling con EXPLAIN)
 
+**Email Marketing** ⚠️ **DA RIORGANIZZARE (28 Gen 2026)**
+- [ ] **Refactor `email:send-reminder`** - DISABILITATO temporaneamente
+  - **Problema**: Inviava 112 email/giorno a TUTTI gli utenti senza video (spam)
+  - **TODO**: Aggiungere filtri (utenti attivi nell'ultimo mese, non già contattati)
+  - **TODO**: Cambiare frequenza da daily a weekly o monthly
+- [ ] **Valutare `email:subscription-reminder`** - Potrebbe essere ridondante con RevenueCat
+- [ ] **Valutare `email:weekly-progress`** - Considerare push notification invece di email
+- [ ] **Rimuovere `app:check-subscription-expiry`** - DISABILITATO (duplicato di `subscriptions:expire`)
+- **Contesto**:
+  - Email configurate con Brevo SMTP (funzionanti)
+  - RevenueCat è source of truth per abbonamenti
+  - Cron job disabilitati in `routes/console.php`
+
 ---
 
 ### 🟢 PRIORITÀ BASSA - Future Enhancements
